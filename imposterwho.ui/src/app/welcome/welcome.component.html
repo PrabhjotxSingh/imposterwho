@@ -1,0 +1,27 @@
+<div class="center">
+  <h1 style="color: #f17720">ImposterWho!</h1>
+
+  <!-- Join Game Section -->
+  <input
+    type="text"
+    [(ngModel)]="lobbyCode"
+    placeholder="Enter Lobby Code"
+    class="input-field"
+    class="fun-input"
+  />
+  <button class="fun-button" (click)="joinGame()">Join Game</button>
+
+  <br />
+  <br />
+
+  <!-- Host Game Section -->
+  <button class="fun-button" (click)="hostGame()">Host Game</button>
+
+  <br />
+  <br />
+
+  <p>
+    Prototype version -
+    <a target="_blank" href="https://prabhsingh.com/">Prabh Singh</a>
+  </p>
+</div>
