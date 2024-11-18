@@ -1,14 +1,16 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { SocketService } from '../services/socket.service';
 import { Router } from '@angular/router';
 import Swal from 'sweetalert2';
+import { Observable } from 'rxjs';
 
 @Component({
   selector: 'app-welcome',
   templateUrl: './welcome.component.html',
   styleUrl: './welcome.component.css',
 })
-export class WelcomeComponent {
+export class WelcomeComponent implements OnInit {
+  username: string | null = '';
   lobbyCode: string = '';
   error: string = '';
 
@@ -20,50 +22,66 @@ export class WelcomeComponent {
         title: 'Oops...',
         text: this.error,
         confirmButtonColor: '#fea42f',
+        allowEscapeKey: false,
+        allowOutsideClick: false,
       });
-    });
-
-    this.socketService.onLobbyCreated().subscribe((lobbyCode) => {
-      this.router.navigate(['/play', lobbyCode]);
-    });
-
-    this.socketService.onLobbyJoined().subscribe((lobbyCode) => {
-      this.router.navigate(['/play', lobbyCode]);
     });
   }
 
-  hostGame(): void {
-    const generatedLobbyCode = Math.random()
-      .toString(36)
-      .substring(2, 7)
-      .toUpperCase();
+  ngOnInit(): void {
+    this.username = localStorage.getItem('username');
+    if (this.username == null || this.username == '') {
+      this.setUsername();
+    }
+
+    this.socketService.lobbyCreated().subscribe((data) => {
+      console.log('Lobby Created:', data);
+    });
+  }
+
+  setUsername() {
     Swal.fire({
-      title: 'Enter your name',
-      input: 'text', // Input type
-      inputPlaceholder: 'Your name here',
-      showCancelButton: true,
+      title: 'Enter your username',
+      input: 'text',
+      inputPlaceholder: 'Type your name here...',
+      showCancelButton: false,
       confirmButtonText: 'Submit',
       confirmButtonColor: '#fea42f',
-      cancelButtonText: 'Cancel',
+      allowEscapeKey: false,
+      allowOutsideClick: false,
       inputValidator: (value) => {
         if (!value) {
           return 'You need to write something!';
-        } else {
-          return this.socketService.createLobby(generatedLobbyCode, value);
         }
+        return null;
       },
+    }).then((result) => {
+      if (result.isConfirmed) {
+        localStorage.setItem('username', result.value);
+        Swal.fire({
+          title: 'Username saved!',
+          text: `Your username has been set as ${result.value}. You can change this anytime by pressing change username on the welcome screen.`,
+          confirmButtonColor: '#fea42f',
+          allowEscapeKey: false,
+          allowOutsideClick: false,
+        }).then(() => {
+          location.reload();
+        });
+      }
     });
   }
 
-  joinGame(): void {
-    if (this.lobbyCode.trim()) {
-      this.socketService.joinLobby(this.lobbyCode.trim());
+  hostGame() {
+    if (this.username) {
+      this.socketService.createLobby(this.username);
     } else {
       Swal.fire({
         icon: 'error',
         title: 'Oops...',
-        text: 'Nothing was entered!',
+        text: 'Something went wrong! Hard refresh and try again!',
         confirmButtonColor: '#fea42f',
+        allowEscapeKey: false,
+        allowOutsideClick: false,
       });
     }
   }

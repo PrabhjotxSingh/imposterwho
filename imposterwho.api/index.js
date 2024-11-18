@@ -14,87 +14,42 @@ const io = new Server(server, {
 
 app.use(cors());
 
-const lobbies = {}; // Object to hold lobbies and their players
+const lobbyContent = {};
+
+function generateLobbyCode() {
+  const chars =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  let code = "";
+  for (let i = 0; i < 6; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
+}
 
 io.on("connection", (socket) => {
-  console.log(lobbies);
-  console.log("A user connected:", socket.id);
+  console.log(lobbyContent);
+  console.log("User Joined:", socket.id);
 
-  // Create a lobby
-  socket.on("createLobby", (lobbyName, name) => {
-    if (!lobbies[lobbyName]) {
-      lobbies[lobbyName] = { players: [], creator: socket.id };
-      socket.join(lobbyName);
-      lobbies[lobbyName].players.push({ id: socket.id, name });
-      console.log(`Lobby ${lobbyName} created by ${name}.`);
-      io.to(socket.id).emit("lobbyCreated", lobbyName);
-      playerName = name;
-    } else {
-      socket.emit("error", "Lobby name already exists.");
-    }
-  });
+  socket.on("createLobby", (name) => {
+    let lobbyCode;
 
-  // Join a lobby
-  socket.on("joinLobby", (lobbyName) => {
-    if (lobbies[lobbyName]) {
-      socket.join(lobbyName);
-      lobbies[lobbyName].players.push(socket.id);
-      console.log(`User ${socket.id} joined lobby ${lobbyName}.`);
-      io.to(socket.id).emit("lobbyJoined", lobbyName);
-    } else {
-      socket.emit("error", "Lobby does not exist");
-    }
-  });
+    do {
+      lobbyCode = generateLobbyCode();
+    } while (lobbyContent[lobbyCode]);
 
-  // Handle messages
-  socket.on("sendMessage", ({ lobbyName, message }) => {
-    const username = lobbies[lobbyName]?.players.find(
-      (player) => player.id === socket.id
-    )?.username;
+    lobbyContent[lobbyCode] = {
+      lobbyCode: lobbyCode,
+      lobbyFounder: name,
+      players: [name],
+    };
 
-    if (!lobbies[lobbyName]) {
-      socket.emit("error", "Lobby does not exist.");
-      return;
-    }
+    socket.emit("lobbyCreated", {
+      lobbyCode: lobbyCode,
+      lobbyFounder: name,
+    });
 
-    if (!username) {
-      socket.emit("error", "Username not found.");
-      return;
-    }
-
-    // Broadcast the message to the lobby
-    io.to(lobbyName).emit("receiveMessage", { username, message });
-    console.log(`[${lobbyName}] ${username}: ${message}`);
-  });
-
-  // Handle disconnection
-  socket.on("disconnect", () => {
-    console.log(`User ${socket.id} disconnected.`);
-    for (const [lobbyName, lobby] of Object.entries(lobbies)) {
-      if (lobby.players.includes(socket.id)) {
-        // Remove the player from the lobby
-        lobby.players = lobby.players.filter((player) => player !== socket.id);
-
-        // If the creator disconnects, notify all players and delete the lobby
-        if (lobby.creator === socket.id) {
-          io.to(lobbyName).emit(
-            "creatorDisconnected",
-            "Lobby creator has left"
-          );
-          lobby.players.forEach((player) => {
-            io.to(player).emit("returnToSelection");
-          });
-          delete lobbies[lobbyName];
-          socket.emit(
-            "error",
-            `Lobby ${lobbyName} deleted as creator disconnected.`
-          );
-        } else {
-          // Notify remaining players about lobby update
-          io.to(lobbyName).emit("lobbyUpdate", lobby.players);
-        }
-      }
-    }
+    console.log(`Lobby created: ${lobbyCode}`);
+    console.log(lobbyContent);
   });
 });
 

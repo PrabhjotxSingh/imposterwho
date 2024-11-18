@@ -2,8 +2,8 @@
 body,
 html {
   height: 100%;
-  font-family: "Bowlby One", sans-serif;
   margin: 0px;
+  font-family: "Open Sans", serif;
 }
 
 .center {
@@ -74,4 +74,12 @@ input.fun-input::placeholder {
 input.fun-input:focus::placeholder {
   color: white;
   opacity: 0.6;
+}
+
+.funFont {
+  font-family: "Bowlby One", sans-serif;
+}
+
+a {
+  color: black;
 }

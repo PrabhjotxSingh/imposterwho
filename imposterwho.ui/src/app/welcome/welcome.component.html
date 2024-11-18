@@ -1,5 +1,12 @@
 <div class="center">
-  <h1 style="color: #f17720">ImposterWho!</h1>
+  @if (username){
+
+  <p class="funFont" style="color: #f17720; line-height: 0.1em">
+    Welcome {{ username }}, to...
+  </p>
+
+  }
+  <h1 class="funFont" style="color: #f17720">ImposterWho!</h1>
 
   <!-- Join Game Section -->
   <input
@@ -9,7 +16,7 @@
     class="input-field"
     class="fun-input"
   />
-  <button class="fun-button" (click)="joinGame()">Join Game</button>
+  <button class="fun-button">Join Game</button>
 
   <br />
   <br />
@@ -20,8 +27,11 @@
   <br />
   <br />
 
-  <p>
-    Prototype version -
-    <a target="_blank" href="https://prabhsingh.com/">Prabh Singh</a>
-  </p>
+  <p>Latest Updates-</p>
+  <p>11.18.24: Not final version expect tons of bugs!</p>
+  <a target="_blank" href="https://prabhsingh.com/">-Prabh Singh</a>
+</div>
+
+<div class="changeUsername">
+  <button class="fun-button" (click)="setUsername()">Change Username</button>
 </div>
