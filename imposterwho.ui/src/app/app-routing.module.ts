@@ -5,7 +5,7 @@ import { PlayComponent } from './play/play.component';
 
 const routes: Routes = [
   { path: '', component: WelcomeComponent },
-  { path: 'play/:lobbyCode', component: PlayComponent },
+  { path: 'play', component: PlayComponent },
 ];
 
 @NgModule({

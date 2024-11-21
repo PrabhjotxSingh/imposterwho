@@ -11,4 +11,16 @@ export class SocketService {
   constructor() {
     this.socket = io('http://localhost:3000'); // Backend server URL
   }
+
+  createLobby(username: string) {
+    this.socket.emit('createLobby', username);
+  }
+
+  onLobbyCreated(callback: (lobbyCode: string) => void) {
+    this.socket.on('onLobbyCreated', callback);
+  }
+
+  onSendError(callback: (error: string) => void) {
+    this.socket.on('onSendError', callback);
+  }
 }

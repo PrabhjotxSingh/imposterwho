@@ -20,8 +20,7 @@ app.use(cors());
 const lobbyContent = {};
 
 function generateLobbyCode() {
-  const chars =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
   let code = "";
   for (let i = 0; i < 6; i++) {
     code += chars.charAt(Math.floor(Math.random() * chars.length));
@@ -32,6 +31,17 @@ function generateLobbyCode() {
 io.on("connection", (socket) => {
   console.log(lobbyContent);
   console.log("User Joined:", socket.id);
+  socket.on("createLobby", (username) => {
+    username = username.trim();
+    if (username == null || username == "") {
+      let error = "An unknown error has occurred.";
+      socket.emit("onSendError", error);
+      return;
+    } else {
+      console.log("Starting lobby");
+      socket.emit("onLobbyCreated", generateLobbyCode());
+    }
+  });
 
   socket.on("disconnect", () => {
     console.log(`A user disconnected: ${socket.id}`);
