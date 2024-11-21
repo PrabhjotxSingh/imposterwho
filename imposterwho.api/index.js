@@ -5,6 +5,9 @@ const cors = require("cors");
 
 const app = express();
 const server = http.createServer(app);
+
+app.use(cors({ origin: "http://localhost:4200", methods: ["GET", "POST"] }));
+
 const io = new Server(server, {
   cors: {
     origin: "http://localhost:4200",
@@ -30,26 +33,8 @@ io.on("connection", (socket) => {
   console.log(lobbyContent);
   console.log("User Joined:", socket.id);
 
-  socket.on("createLobby", (name) => {
-    let lobbyCode;
-
-    do {
-      lobbyCode = generateLobbyCode();
-    } while (lobbyContent[lobbyCode]);
-
-    lobbyContent[lobbyCode] = {
-      lobbyCode: lobbyCode,
-      lobbyFounder: name,
-      players: [name],
-    };
-
-    socket.emit("lobbyCreated", {
-      lobbyCode: lobbyCode,
-      lobbyFounder: name,
-    });
-
-    console.log(`Lobby created: ${lobbyCode}`);
-    console.log(lobbyContent);
+  socket.on("disconnect", () => {
+    console.log(`A user disconnected: ${socket.id}`);
   });
 });
 
