@@ -16,11 +16,31 @@ export class SocketService {
     this.socket.emit('createLobby', username);
   }
 
+  joinLobby(username: string, lobbyCode: string) {
+    this.socket.emit('joinLobby', username, lobbyCode);
+  }
+
+  checkPlayerStatus() {
+    this.socket.emit('checkPlayerStatus');
+  }
+
   onLobbyCreated(callback: (lobbyCode: string) => void) {
     this.socket.on('onLobbyCreated', callback);
   }
 
+  onLobbyJoined(callback: (lobbyCode: string) => void) {
+    this.socket.on('onLobbyJoined', callback);
+  }
+
   onSendError(callback: (error: string) => void) {
     this.socket.on('onSendError', callback);
+  }
+
+  onLobbyClosed(callback: (error: string) => void) {
+    this.socket.on('onLobbyClosed', callback);
+  }
+
+  onPlayerLeft(callback: (data: { lobbyCode: string; players: any }) => void) {
+    this.socket.on('onPlayerLeft', callback);
   }
 }

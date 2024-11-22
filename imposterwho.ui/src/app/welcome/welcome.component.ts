@@ -10,15 +10,153 @@ import Swal from 'sweetalert2';
 })
 export class WelcomeComponent implements OnInit {
   lobbyCode = '';
-  username = 'testUser';
+  username = '';
+
+  private adjectives = [
+    'Smart',
+    'Fast',
+    'Clever',
+    'Brave',
+    'Cool',
+    'Happy',
+    'Mighty',
+    'Swift',
+    'Bold',
+    'Fierce',
+    'Lucky',
+    'Noble',
+    'Kind',
+    'Witty',
+    'Charming',
+    'Gentle',
+    'Strong',
+    'Loyal',
+    'Fearless',
+    'Shy',
+    'Wise',
+    'Quick',
+    'Quiet',
+    'Lively',
+    'Sneaky',
+    'Jolly',
+    'Cheerful',
+    'Bright',
+    'Calm',
+    'Daring',
+    'Playful',
+    'Friendly',
+    'Zany',
+    'Epic',
+    'Bubbly',
+    'Eager',
+    'Bold',
+    'Serious',
+    'Sleepy',
+    'Wild',
+    'Energetic',
+    'Adventurous',
+    'Generous',
+    'Bold',
+    'Majestic',
+    'Gallant',
+    'Smiling',
+    'Dreamy',
+    'Grumpy',
+    'Joyful',
+    'Eloquent',
+    'Fluffy',
+    'Speedy',
+    'Crafty',
+    'Radiant',
+    'Dynamic',
+    'Feisty',
+    'Giddy',
+    'Heroic',
+    'Magical',
+    'Resourceful',
+    'Humble',
+    'Spunky',
+    'Practical',
+    'Savvy',
+    'Sunny',
+  ];
+
+  private nouns = [
+    'Pirate',
+    'Cow',
+    'Tiger',
+    'Ninja',
+    'Eagle',
+    'Dragon',
+    'Knight',
+    'Panther',
+    'Wolf',
+    'Hawk',
+    'Fox',
+    'Lion',
+    'Bear',
+    'Dolphin',
+    'Falcon',
+    'Shark',
+    'Cheetah',
+    'Whale',
+    'Phoenix',
+    'Gryphon',
+    'Unicorn',
+    'Wizard',
+    'Goblin',
+    'Elf',
+    'Orc',
+    'Samurai',
+    'Robot',
+    'Alien',
+    'Bunny',
+    'Duck',
+    'Raven',
+    'Sparrow',
+    'Panda',
+    'Otter',
+    'Hedgehog',
+    'Lemur',
+    'Sloth',
+    'Octopus',
+    'Turtle',
+    'Puffin',
+    'Chipmunk',
+    'Kangaroo',
+    'Zebra',
+    'Moose',
+    'Narwhal',
+    'Frog',
+    'Lizard',
+    'Crab',
+    'Viper',
+    'Gecko',
+    'Bat',
+    'Penguin',
+    'Snail',
+    'Mantis',
+    'Beetle',
+    'Rhino',
+    'Koala',
+    'Chameleon',
+    'Llama',
+    'Giraffe',
+    'Jaguar',
+    'Cobra',
+    'Parrot',
+    'Walrus',
+    'Peacock',
+    'Ferret',
+    'Platypus',
+  ];
 
   constructor(private socketService: SocketService, private router: Router) {
     this.socketService.onSendError((errorMessage: string) => {
-      this.showErrorAlert(
-        'Unknown Error',
-        `Sorry but looks like something went wrong!`
-      );
+      this.showErrorAlert('Unknown Error', errorMessage);
     });
+
+    this.generateRandomUsername();
   }
 
   showErrorAlert(title: string, message: string) {
@@ -49,10 +187,30 @@ export class WelcomeComponent implements OnInit {
     });
   }
 
+  generateRandomUsername() {
+    const randomAdjective =
+      this.adjectives[Math.floor(Math.random() * this.adjectives.length)];
+    const randomNoun =
+      this.nouns[Math.floor(Math.random() * this.nouns.length)];
+    this.username = `${randomAdjective}${randomNoun}`;
+  }
+
   ngOnInit(): void {}
 
   joinGame() {
-    this.lobbyCode = this.lobbyCode.toUpperCase();
+    this.lobbyCode = this.lobbyCode.toUpperCase().trim();
+    this.username = this.username.trim();
+    if (!this.username) {
+      this.showErrorAlert('No Username', 'You need an username to play silly!');
+      return;
+    }
+    this.socketService.joinLobby(this.username, this.lobbyCode);
+    this.socketService.onLobbyJoined((lobbyCode: string) => {
+      this.showAlertAndRedirect(
+        'Start Game',
+        `Your game is ready to go! Your have joined lobby <b>${lobbyCode}</b>.`
+      );
+    });
   }
 
   hostGame() {
