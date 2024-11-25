@@ -1,10 +1,10 @@
 <div class="container">
   <div class="left">
-    <h2 class="funFont" style="color: #f17720">ImposterWho!</h2>
+    <h2 class="funFont">ImposterWho!</h2>
     <br />
     <h2>Players</h2>
     <ul>
-      <li>Sample</li>
+      <li *ngFor="let player of players">{{ player.name }}</li>
     </ul>
     <br />
     <h2>Game Code</h2>

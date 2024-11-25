@@ -9,6 +9,8 @@ import Swal from 'sweetalert2';
   styleUrl: './play.component.css',
 })
 export class PlayComponent {
+  players: any[] = [];
+
   showErrorAlert(title: string, message: string) {
     Swal.fire({
       title: title,

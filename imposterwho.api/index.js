@@ -119,7 +119,7 @@ io.on("connection", (socket) => {
     if (!found) {
       socket.emit(
         "onSendError",
-        "Looks you ended up on the play screen by mistake. Please join a lobby first. "
+        "Looks you ended up on the play screen by mistake or refreshed your browser. Remember refreshing your browser disconnects you from the game. Please rejoin the lobby, if you were the host this lobby has been closed. "
       );
     }
   });
