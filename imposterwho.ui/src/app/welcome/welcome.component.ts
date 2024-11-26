@@ -151,7 +151,9 @@ export class WelcomeComponent implements OnInit {
     'Platypus',
   ];
 
-  constructor(private socketService: SocketService, private router: Router) {
+  constructor(private socketService: SocketService, private router: Router) {}
+
+  ngOnInit(): void {
     this.socketService.onSendError((errorMessage: string) => {
       this.showErrorAlert('Unknown Error', errorMessage);
     });
@@ -194,8 +196,6 @@ export class WelcomeComponent implements OnInit {
       this.nouns[Math.floor(Math.random() * this.nouns.length)];
     this.username = `${randomAdjective}${randomNoun}`;
   }
-
-  ngOnInit(): void {}
 
   joinGame() {
     this.lobbyCode = this.lobbyCode.toUpperCase().trim();

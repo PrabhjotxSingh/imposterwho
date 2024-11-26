@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { io, Socket } from 'socket.io-client';
-import { Observable } from 'rxjs';
+import { BehaviorSubject, Observable, Subject } from 'rxjs';
 
 @Injectable({
   providedIn: 'root',
@@ -8,8 +8,24 @@ import { Observable } from 'rxjs';
 export class SocketService {
   private socket: Socket;
 
+  private lobbyUpdatedSubject = new BehaviorSubject<{
+    lobbyCode: any;
+    lobby: any;
+  } | null>(null);
+
   constructor() {
-    this.socket = io('http://localhost:3000'); // Backend server URL
+    this.socket = io('http://localhost:3000');
+    this.registerSocketListeners();
+  }
+
+  private registerSocketListeners(): void {
+    this.socket.on('onLobbyUpdated', (lobbyCode: any, lobby: any) => {
+      this.lobbyUpdatedSubject.next({ lobbyCode, lobby });
+    });
+  }
+
+  get lobbyUpdated$() {
+    return this.lobbyUpdatedSubject.asObservable();
   }
 
   createLobby(username: string) {

@@ -49,6 +49,13 @@ io.on("connection", (socket) => {
       let error = "An unknown error has occurred.";
       socket.emit("onSendError", error);
       return;
+    }
+    if (Object.values(lobbyContent).some((lobby) => lobby.players[socket.id])) {
+      socket.emit(
+        "onSendError",
+        "You are already part of a lobby. Leave your current lobby to create a new one. You may refresh to fully disconnect."
+      );
+      return;
     } else {
       let lobbyCode = generateLobbyCode();
       lobbyContent[lobbyCode] = {
@@ -61,6 +68,11 @@ io.on("connection", (socket) => {
       };
       socket.join(lobbyCode);
       socket.emit("onLobbyCreated", lobbyCode);
+      io.to(lobbyCode).emit(
+        "onLobbyUpdated",
+        lobbyCode,
+        lobbyContent[lobbyCode]
+      );
       console.log("On Lobby Create: " + JSON.stringify(lobbyContent, null, 2));
     }
   });
@@ -97,6 +109,11 @@ io.on("connection", (socket) => {
       lobby.players[socket.id] = { name: username };
       socket.join(lobbyCode);
       socket.emit("onLobbyJoined", lobbyCode);
+      io.to(lobbyCode).emit(
+        "onLobbyUpdated",
+        lobbyCode,
+        lobbyContent[lobbyCode]
+      );
       console.log("On Lobby Join: " + JSON.stringify(lobbyContent, null, 2));
     }
   });
@@ -142,6 +159,11 @@ io.on("connection", (socket) => {
             lobbyCode,
             players: lobby.players,
           });
+          io.to(lobbyCode).emit(
+            "onLobbyUpdated",
+            lobbyCode,
+            lobbyContent[lobbyCode]
+          );
         }
         socket.leave(lobbyCode);
         break;
