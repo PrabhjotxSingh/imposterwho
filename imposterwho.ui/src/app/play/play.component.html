@@ -11,6 +11,17 @@
     <p>{{ lobbyCode }}</p>
   </div>
   <div class="right">
-    <p>Right Side</p>
+    <div class="chat_container">
+      <div class="chat" *ngFor="let player of players">
+        <strong>{{ player.name }}</strong
+        >: Heres my message
+      </div>
+    </div>
+    <input
+      class="chat_input"
+      [(ngModel)]="message"
+      (keydown.enter)="sendMessage()"
+      placeholder="Type your word/phrase..."
+    />
   </div>
 </div>

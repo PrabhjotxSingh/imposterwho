@@ -14,6 +14,7 @@ export class PlayComponent implements OnInit, OnDestroy {
   players: any[] = [];
   lobbyCode: any = '';
   lobbyContent: any;
+  message: string = '';
 
   constructor(
     private socketService: SocketService,
@@ -95,5 +96,9 @@ export class PlayComponent implements OnInit, OnDestroy {
         this.router.navigate(['']);
       }
     });
+  }
+
+  sendMessage() {
+    alert('sample');
   }
 }
