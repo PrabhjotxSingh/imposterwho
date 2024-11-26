@@ -16,6 +16,9 @@ export class PlayComponent implements OnInit, OnDestroy {
   lobbyContent: any;
   message: string = '';
 
+  // Game vars
+  category: string = '';
+
   constructor(
     private socketService: SocketService,
     private router: Router,
@@ -49,17 +52,62 @@ export class PlayComponent implements OnInit, OnDestroy {
           this.lobbyContent = data.lobby;
           this.players = Object.values(this.lobbyContent.players);
 
-          // Check player before starting
-          if (this.players.length < 3) {
-            Swal.fire({
-              title: 'Waiting for Players',
-              html: `Waiting for more players to join...<br>(${this.players.length}/3 joined)<br />Send <b>${this.lobbyCode}</b> to your friends!</b>`,
-              icon: 'info',
-              allowOutsideClick: false,
-              showConfirmButton: false,
-            });
-          } else {
+          console.log(this.lobbyContent);
+
+          if (this.lobbyContent.game.isActive == false) {
+            if (this.players.length < 3) {
+              Swal.fire({
+                title: 'Waiting for Players',
+                html: `Waiting for more players to join...<br>(${this.players.length}/3 joined)<br />Send <b>${this.lobbyCode}</b> to your friends!</b>`,
+                icon: 'info',
+                allowOutsideClick: false,
+                showConfirmButton: false,
+                allowEscapeKey: false,
+              });
+            } else {
+              const isHost =
+                this.lobbyContent.host[this.socketService.socketId];
+
+              if (isHost) {
+                Swal.fire({
+                  title: 'Start the Game',
+                  html: `The minimum of three players have joined the lobby. Click <b>Start Game</b> to begin or wait for more!`,
+                  icon: 'success',
+                  showConfirmButton: true,
+                  confirmButtonText: 'Start Game',
+                  allowOutsideClick: false,
+                  allowEscapeKey: false,
+                  confirmButtonColor: '#fea42f',
+                }).then((result) => {
+                  if (result.isConfirmed) {
+                    this.startGame();
+                  }
+                });
+              } else {
+                Swal.fire({
+                  title: 'Waiting for Host',
+                  html: `The game is ready to start! Waiting for the host to begin...`,
+                  icon: 'info',
+                  allowOutsideClick: false,
+                  showConfirmButton: false,
+                  allowEscapeKey: false,
+                });
+              }
+            }
+          } else if (this.lobbyContent.game.isActive == true) {
+            // Game has started, close all Swal popups
             Swal.close();
+            //Game logic here
+            if (
+              this.lobbyContent.game.chosenPlayer ===
+              this.socketService.socketId
+            ) {
+              alert('Category Selection');
+            } else if (
+              this.lobbyContent.game.imposter === this.socketService.socketId
+            ) {
+              alert('You Are the Imposter!');
+            }
           }
         }
       })
@@ -99,6 +147,10 @@ export class PlayComponent implements OnInit, OnDestroy {
   }
 
   sendMessage() {
-    alert('sample');
+    alert(this.message);
+  }
+
+  startGame() {
+    this.socketService.startGame(this.lobbyCode);
   }
 }

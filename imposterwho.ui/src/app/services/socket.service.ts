@@ -7,6 +7,7 @@ import { BehaviorSubject, Observable, Subject } from 'rxjs';
 })
 export class SocketService {
   private socket: Socket;
+  socketId: string = '';
 
   private lobbyUpdatedSubject = new BehaviorSubject<{
     lobbyCode: any;
@@ -15,6 +16,9 @@ export class SocketService {
 
   constructor() {
     this.socket = io('http://localhost:3000');
+    this.socket.on('connect', () => {
+      this.socketId = this.socket.id ?? ''; // Store the socket ID
+    });
     this.registerSocketListeners();
   }
 
@@ -34,6 +38,10 @@ export class SocketService {
 
   joinLobby(username: string, lobbyCode: string) {
     this.socket.emit('joinLobby', username, lobbyCode);
+  }
+
+  startGame(lobbyCode: string) {
+    this.socket.emit('startGame', lobbyCode);
   }
 
   checkPlayerStatus() {

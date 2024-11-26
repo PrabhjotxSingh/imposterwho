@@ -27,6 +27,20 @@ let lobbyContent = {
       socketId2: { name: "Player2" },
       socketId3: { name: "Player3" },
     },
+    game: {
+      isActive: false,
+      currentRound: 0,
+      currentGame: 0,
+      category: null,
+      imposter: null,
+      chosenPlayer: null,
+      guesses: 0,
+      maxGuesses: 3,
+      votesUsed: 0,
+      maxVotes: 3,
+      voteData: {},
+      dev: "",
+    },
   },
 };
 
@@ -38,6 +52,42 @@ function generateLobbyCode() {
   }
   return code;
 }
+
+// async function gameLoop(lobbyCode) {
+//   const lobby = lobbyContent[lobbyCode];
+//   const game = lobby.game;
+
+//   while (game.isActive) {
+//     console.log(`Starting round ${game.currentRound} in lobby ${lobbyCode}`);
+
+//     // Step 1: Assign Roles
+//     assignRoles(lobby);
+
+//     // Step 2: Await Category Input
+//     const category = await awaitCategoryInput(lobby);
+//     if (!category) {
+//       console.log("Game terminated: No category provided.");
+//       endGame(lobbyCode, "Game ended as no category was chosen.");
+//       return;
+//     }
+
+//     console.log(`Category chosen: ${category}`);
+
+//     // Notify Players of the Round Details
+//     io.to(lobbyCode).emit("onLobbyUpdated", lobbyCode, lobby);
+
+//     // Step 3: Await Player Actions (Imposter guesses or players vote)
+//     const result = await handlePlayerActions(lobby);
+//     if (result) {
+//       console.log("Game result:", result);
+//       endGame(lobbyCode, result);
+//       return;
+//     }
+
+//     // Step 4: Prepare for Next Round
+//     game.currentRound++;
+//   }
+// }
 
 io.on("connection", (socket) => {
   console.log("On Lobby Create: " + JSON.stringify(lobbyContent, null, 2));
@@ -64,6 +114,19 @@ io.on("connection", (socket) => {
         },
         players: {
           [socket.id]: { name: username },
+        },
+        game: {
+          isActive: false,
+          currentRound: 1,
+          currentGame: 1,
+          category: null,
+          imposter: null,
+          chosenPlayer: null,
+          guesses: 0,
+          maxGuesses: 3,
+          votesUsed: 0,
+          maxVotes: 3,
+          voteData: {},
         },
       };
       socket.join(lobbyCode);
@@ -139,6 +202,25 @@ io.on("connection", (socket) => {
         "Looks you ended up on the play screen by mistake or refreshed your browser. Remember refreshing your browser disconnects you from the game. Please rejoin the lobby, if you were the host this lobby has been closed. "
       );
     }
+  });
+
+  socket.on("startGame", async (lobbyCode) => {
+    let lobby = lobbyContent[lobbyCode];
+
+    if (!lobby) {
+      socket.emit("onSendError", "Lobby not found.");
+      return;
+    }
+
+    if (Object.keys(lobby.players).length < 3) {
+      socket.emit("onSendError", "You need at least 3 players to start.");
+      return;
+    }
+
+    lobby.game.isActive = true;
+    lobby.game.currentRound = 1;
+
+    // await gameLoop(lobbyCode);
   });
 
   socket.on("disconnect", () => {
