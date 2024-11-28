@@ -14,10 +14,11 @@ export class PlayComponent implements OnInit, OnDestroy {
   players: any[] = [];
   lobbyCode: any = '';
   lobbyContent: any;
+  currentRound: number = 1;
+  currentGame: number = 1;
+  currentCategory: string = 'None yet';
+  actionButton: string = '???';
   message: string = '';
-
-  // Game vars
-  category: string = '';
 
   constructor(
     private socketService: SocketService,
@@ -51,6 +52,8 @@ export class PlayComponent implements OnInit, OnDestroy {
           this.lobbyCode = data.lobbyCode;
           this.lobbyContent = data.lobby;
           this.players = Object.values(this.lobbyContent.players);
+          this.currentRound = this.lobbyContent.game.currentRound;
+          this.currentGame = this.lobbyContent.game.currentGame;
 
           console.log(this.lobbyContent);
 
@@ -97,16 +100,83 @@ export class PlayComponent implements OnInit, OnDestroy {
           } else if (this.lobbyContent.game.isActive == true) {
             // Game has started, close all Swal popups
             Swal.close();
-            //Game logic here
-            if (
-              this.lobbyContent.game.chosenPlayer ===
-              this.socketService.socketId
-            ) {
-              alert('Category Selection');
-            } else if (
-              this.lobbyContent.game.imposter === this.socketService.socketId
-            ) {
-              alert('You Are the Imposter!');
+
+            // Game logic here
+
+            // Reset category
+
+            this.currentCategory = 'None yet';
+
+            // Display player type message
+            if (this.lobbyContent.game.allPrepDone == false) {
+              if (
+                this.lobbyContent.game.chosenPlayer ===
+                this.socketService.socketId
+              ) {
+                this.actionButton = 'Vote';
+                Swal.fire({
+                  title: 'You are the category picker!',
+                  text: `Please enter your category before time runs out.`,
+                  input: 'text',
+                  inputPlaceholder: 'Enter your category...',
+                  showCancelButton: false,
+                  confirmButtonText: 'Submit',
+                  confirmButtonColor: '#fea42f',
+                  timer: 30000,
+                  timerProgressBar: true,
+                  allowOutsideClick: false,
+                  allowEscapeKey: false,
+                  backdrop: false,
+                  inputValidator: (value) => {
+                    if (!value || value.trim() === '') {
+                      return 'You need to write something!';
+                    }
+                    return null;
+                  },
+                }).then((result) => {
+                  if (result.isConfirmed) {
+                    console.log('Category submitted:', result.value);
+                    this.submitCategory(result.value);
+                  } else if (result.dismiss === Swal.DismissReason.timer) {
+                    console.log('Timer ran out. Sending empty category.');
+                    this.submitCategory('');
+                  }
+                });
+              } else if (
+                this.lobbyContent.game.imposter === this.socketService.socketId
+              ) {
+                this.actionButton = 'Guess';
+                Swal.fire({
+                  title: 'You are the imposter!',
+                  text: `Please wait while the category picker decides. Also don't tell anyone you are the imposter.`,
+                  showConfirmButton: false,
+                  timer: 30000,
+                  timerProgressBar: true,
+                  allowOutsideClick: false,
+                  allowEscapeKey: false,
+                  backdrop: false,
+                });
+              } else {
+                this.actionButton = 'Vote';
+                Swal.fire({
+                  title: 'You are a player!',
+                  text: `Please wait while the category picker decides.`,
+                  showConfirmButton: false,
+                  timer: 30000,
+                  timerProgressBar: true,
+                  allowOutsideClick: false,
+                  allowEscapeKey: false,
+                  backdrop: false,
+                });
+              }
+            } else {
+              if (
+                this.lobbyContent.game.imposter === this.socketService.socketId
+              ) {
+                this.currentCategory = 'You are the imposter';
+              } else {
+                this.currentCategory = this.lobbyContent.game.category;
+              }
             }
           }
         }
@@ -152,5 +222,9 @@ export class PlayComponent implements OnInit, OnDestroy {
 
   startGame() {
     this.socketService.startGame(this.lobbyCode);
+  }
+
+  submitCategory(value: string | null) {
+    this.socketService.submitCategory(value, this.lobbyCode);
   }
 }

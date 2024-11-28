@@ -48,6 +48,10 @@ export class SocketService {
     this.socket.emit('checkPlayerStatus');
   }
 
+  submitCategory(value: string | null, lobbyCode: string) {
+    this.socket.emit('submitCategory', value, lobbyCode);
+  }
+
   onLobbyCreated(callback: (lobbyCode: string) => void) {
     this.socket.on('onLobbyCreated', callback);
   }

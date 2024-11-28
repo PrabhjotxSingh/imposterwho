@@ -17,6 +17,96 @@ const io = new Server(server, {
 
 app.use(cors());
 
+let randomCategory = [
+  "apple",
+  "chandelier",
+  "mountain",
+  "laptop",
+  "pizza",
+  "dragon",
+  "book",
+  "teddy bear",
+  "ice cream",
+  "galaxy",
+  "pencil",
+  "waterfall",
+  "robot",
+  "chocolate bar",
+  "backpack",
+  "bicycle",
+  "keyboard",
+  "beach ball",
+  "spaceship",
+  "sweater",
+  "candle",
+  "roller coaster",
+  "hamburger",
+  "sunflower",
+  "cloud",
+  "paintbrush",
+  "toaster",
+  "camera",
+  "suitcase",
+  "banana",
+  "rainbow",
+  "sushi",
+  "microscope",
+  "treasure chest",
+  "mug",
+  "volcano",
+  "soccer ball",
+  "ukulele",
+  "whale",
+  "popcorn",
+  "snowman",
+  "owl",
+  "lightbulb",
+  "fireworks",
+  "skateboard",
+  "castle",
+  "map",
+  "shoes",
+  "rocket",
+  "scarf",
+  "pineapple",
+  "hot air balloon",
+  "watermelon",
+  "mountain bike",
+  "train",
+  "cookie",
+  "penguin",
+  "bottle",
+  "jellyfish",
+  "notebook",
+  "garden",
+  "headphones",
+  "cupcake",
+  "guitar",
+  "sunset",
+  "mirror",
+  "donut",
+  "parrot",
+  "cactus",
+  "fountain",
+  "slippers",
+  "puzzle",
+  "clock",
+  "sunglasses",
+  "umbrella",
+  "scooter",
+  "tent",
+  "basketball",
+  "binoculars",
+  "vase",
+  "igloo",
+  "kite",
+  "roller skates",
+  "trumpet",
+  "snowflake",
+  "zebra",
+  "ferris wheel",
+];
+
 let lobbyContent = {
   aaa: {
     host: {
@@ -34,6 +124,7 @@ let lobbyContent = {
       category: null,
       imposter: null,
       chosenPlayer: null,
+      allPrepDone: false,
       guesses: 0,
       maxGuesses: 3,
       votesUsed: 0,
@@ -53,43 +144,90 @@ function generateLobbyCode() {
   return code;
 }
 
-// async function gameLoop(lobbyCode) {
-//   const lobby = lobbyContent[lobbyCode];
-//   const game = lobby.game;
-
-//   while (game.isActive) {
-//     console.log(`Starting round ${game.currentRound} in lobby ${lobbyCode}`);
-
-//     // Step 1: Assign Roles
-//     assignRoles(lobby);
-
-//     // Step 2: Await Category Input
-//     const category = await awaitCategoryInput(lobby);
-//     if (!category) {
-//       console.log("Game terminated: No category provided.");
-//       endGame(lobbyCode, "Game ended as no category was chosen.");
-//       return;
-//     }
-
-//     console.log(`Category chosen: ${category}`);
-
-//     // Notify Players of the Round Details
-//     io.to(lobbyCode).emit("onLobbyUpdated", lobbyCode, lobby);
-
-//     // Step 3: Await Player Actions (Imposter guesses or players vote)
-//     const result = await handlePlayerActions(lobby);
-//     if (result) {
-//       console.log("Game result:", result);
-//       endGame(lobbyCode, result);
-//       return;
-//     }
-
-//     // Step 4: Prepare for Next Round
-//     game.currentRound++;
-//   }
-// }
-
 io.on("connection", (socket) => {
+  function waitForActionToComplete(conditionFn, timeoutMs) {
+    return new Promise((resolve) => {
+      const interval = setInterval(() => {
+        if (conditionFn()) {
+          clearInterval(interval);
+          clearTimeout(timeout);
+          resolve(); // Action completed
+        }
+      }, 100); // Check every 100ms
+
+      const timeout = setTimeout(() => {
+        clearInterval(interval);
+        resolve(); // Timeout reached
+      }, timeoutMs);
+    });
+  }
+
+  function delay(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  async function gameLoop(lobbyCode) {
+    const lobby = lobbyContent[lobbyCode];
+    const game = lobby.game;
+
+    while (game.isActive) {
+      console.log(`Starting round ${game.currentRound} in lobby ${lobbyCode}`);
+
+      let fallbackCategory =
+        randomCategory[Math.floor(Math.random() * randomCategory.length)];
+
+      // Reset per-round data
+      game.category = null;
+      game.imposter = null;
+      game.chosenPlayer = null;
+      game.allPrepDone = false;
+      game.guesses = 0;
+      game.maxGuesses = 3;
+      game.votesUsed = 0;
+      game.maxVotes = 3;
+      game.voteData = {};
+      game.dev = "";
+
+      // Step 1: Assign Roles
+      assignRoles(lobby);
+
+      // Notify Players of the Round Details
+      io.to(lobbyCode).emit("onLobbyUpdated", lobbyCode, lobby);
+
+      //Waiting for Category Submission Here
+      await waitForActionToComplete(() => game.allPrepDone, 30000);
+
+      if (game.category == null || game.category == "") {
+        game.category = fallbackCategory;
+      }
+
+      io.to(lobbyCode).emit("onLobbyUpdated", lobbyCode, lobby);
+
+      await delay(5000);
+      // // Step 4: Prepare for Next Round
+      game.currentRound++;
+      console.log("next");
+    }
+  }
+
+  function assignRoles(lobby) {
+    const playerIds = Object.keys(lobby.players);
+    const game = lobby.game;
+
+    game.imposter = playerIds[Math.floor(Math.random() * playerIds.length)];
+
+    let chosenPlayer;
+    do {
+      chosenPlayer = playerIds[Math.floor(Math.random() * playerIds.length)];
+    } while (chosenPlayer === game.imposter);
+
+    game.chosenPlayer = chosenPlayer;
+
+    console.log(
+      `Roles assigned: Imposter - ${game.imposter}, Chosen Player - ${game.chosenPlayer}`
+    );
+  }
+
   console.log("On Lobby Create: " + JSON.stringify(lobbyContent, null, 2));
   console.log("User Joined:", socket.id);
 
@@ -122,11 +260,13 @@ io.on("connection", (socket) => {
           category: null,
           imposter: null,
           chosenPlayer: null,
+          allPrepDone: false,
           guesses: 0,
           maxGuesses: 3,
           votesUsed: 0,
           maxVotes: 3,
           voteData: {},
+          dev: "",
         },
       };
       socket.join(lobbyCode);
@@ -204,7 +344,7 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on("startGame", async (lobbyCode) => {
+  socket.on("startGame", (lobbyCode) => {
     let lobby = lobbyContent[lobbyCode];
 
     if (!lobby) {
@@ -220,7 +360,24 @@ io.on("connection", (socket) => {
     lobby.game.isActive = true;
     lobby.game.currentRound = 1;
 
-    // await gameLoop(lobbyCode);
+    io.to(lobbyCode).emit("onLobbyUpdated", lobbyCode, lobbyContent[lobbyCode]);
+
+    gameLoop(lobbyCode);
+  });
+
+  socket.on("submitCategory", (value, lobbyCode) => {
+    if (!lobbyContent[lobbyCode]) {
+      return;
+    }
+    const game = lobbyContent[lobbyCode].game;
+
+    game.category =
+      value ||
+      randomCategory[Math.floor(Math.random() * randomCategory.length)];
+
+    game.allPrepDone = true;
+
+    io.to(lobbyCode).emit("onLobbyUpdated", lobbyCode, lobbyContent[lobbyCode]);
   });
 
   socket.on("disconnect", () => {
