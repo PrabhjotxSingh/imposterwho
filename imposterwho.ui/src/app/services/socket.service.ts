@@ -52,6 +52,10 @@ export class SocketService {
     this.socket.emit('submitCategory', value, lobbyCode);
   }
 
+  submitMessage(message: string, lobbyCode: string): void {
+    this.socket.emit('submitMessage', message, lobbyCode);
+  }
+
   onLobbyCreated(callback: (lobbyCode: string) => void) {
     this.socket.on('onLobbyCreated', callback);
   }

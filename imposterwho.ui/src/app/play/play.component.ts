@@ -12,13 +12,17 @@ import { Observable, Subscription } from 'rxjs';
 export class PlayComponent implements OnInit, OnDestroy {
   lobbySubscription: Subscription = new Subscription();
   players: any[] = [];
+  playersData: any = {};
   lobbyCode: any = '';
   lobbyContent: any;
   currentRound: number = 1;
   currentGame: number = 1;
   currentCategory: string = 'None yet';
   actionButton: string = '???';
+  allPrepDone: boolean = false;
+  canSendMessages: boolean = false;
   message: string = '';
+  currentResponses: any = {};
 
   constructor(
     private socketService: SocketService,
@@ -52,8 +56,17 @@ export class PlayComponent implements OnInit, OnDestroy {
           this.lobbyCode = data.lobbyCode;
           this.lobbyContent = data.lobby;
           this.players = Object.values(this.lobbyContent.players);
+          this.playersData = Object.entries(
+            this.lobbyContent.players as Record<string, { name: string }>
+          ).map(([socketId, playerData]) => ({
+            socketId,
+            name: playerData.name,
+          }));
           this.currentRound = this.lobbyContent.game.currentRound;
           this.currentGame = this.lobbyContent.game.currentGame;
+          this.allPrepDone = this.lobbyContent.game.allPrepDone;
+          this.canSendMessages = this.lobbyContent.game.canSendMessages;
+          this.currentResponses = this.lobbyContent.game.responses;
 
           console.log(this.lobbyContent);
 
@@ -216,10 +229,17 @@ export class PlayComponent implements OnInit, OnDestroy {
     });
   }
 
-  sendMessage() {
-    alert(this.message);
+  sendMessage(): void {
+    if (this.message.trim() !== '') {
+      this.socketService.submitMessage(this.message, this.lobbyCode);
+      this.message = '';
+    } else {
+      this.showErrorAlert(
+        'Empty Message',
+        'You can not send an empty message.'
+      );
+    }
   }
-
   startGame() {
     this.socketService.startGame(this.lobbyCode);
   }

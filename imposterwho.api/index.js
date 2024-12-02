@@ -130,6 +130,8 @@ let lobbyContent = {
       votesUsed: 0,
       maxVotes: 3,
       voteData: {},
+      responses: {},
+      canSendMessages: false,
       dev: "",
     },
   },
@@ -167,10 +169,14 @@ io.on("connection", (socket) => {
   }
 
   async function gameLoop(lobbyCode) {
-    const lobby = lobbyContent[lobbyCode];
-    const game = lobby.game;
+    while (
+      lobbyContent[lobbyCode] &&
+      lobbyContent[lobbyCode].game.isActive == true
+    ) {
+      const lobby = lobbyContent[lobbyCode];
+      const game = lobby.game;
+      let currentGame = 1;
 
-    while (game.isActive) {
       console.log(`Starting round ${game.currentRound} in lobby ${lobbyCode}`);
 
       let fallbackCategory =
@@ -186,6 +192,8 @@ io.on("connection", (socket) => {
       game.votesUsed = 0;
       game.maxVotes = 3;
       game.voteData = {};
+      game.responses = {};
+      game.canSendMessages = false;
       game.dev = "";
 
       // Step 1: Assign Roles
@@ -194,6 +202,8 @@ io.on("connection", (socket) => {
       // Notify Players of the Round Details
       io.to(lobbyCode).emit("onLobbyUpdated", lobbyCode, lobby);
 
+      if (!game.isActive) break;
+
       //Waiting for Category Submission Here
       await waitForActionToComplete(() => game.allPrepDone, 30000);
 
@@ -201,12 +211,41 @@ io.on("connection", (socket) => {
         game.category = fallbackCategory;
       }
 
-      io.to(lobbyCode).emit("onLobbyUpdated", lobbyCode, lobby);
+      while (
+        game.currentGame == currentGame &&
+        lobbyContent[lobbyCode] &&
+        lobbyContent[lobbyCode].game.isActive == true
+      ) {
+        game.canSendMessages = true;
 
-      await delay(5000);
-      // // Step 4: Prepare for Next Round
-      game.currentRound++;
-      console.log("next");
+        io.to(lobbyCode).emit("onLobbyUpdated", lobbyCode, lobby);
+
+        if (!game.isActive) break;
+
+        // Await player messages
+        await waitForActionToComplete(() => {
+          const allResponded = Object.keys(lobby.players).every(
+            (playerId) => game.responses[playerId]
+          );
+          return allResponded;
+        }, 60000);
+
+        // Fill in "no response." for missing players
+        Object.keys(lobby.players).forEach((playerId) => {
+          if (!game.responses[playerId]) {
+            game.responses[playerId] = "Time ran out!";
+          }
+        });
+
+        game.canSendMessages = false;
+
+        io.to(lobbyCode).emit("onLobbyUpdated", lobbyCode, lobby);
+
+        await delay(10000);
+
+        game.currentRound++;
+        console.log("next round");
+      }
     }
   }
 
@@ -266,6 +305,8 @@ io.on("connection", (socket) => {
           votesUsed: 0,
           maxVotes: 3,
           voteData: {},
+          responses: {},
+          canSendMessages: false,
           dev: "",
         },
       };
@@ -378,6 +419,20 @@ io.on("connection", (socket) => {
     game.allPrepDone = true;
 
     io.to(lobbyCode).emit("onLobbyUpdated", lobbyCode, lobbyContent[lobbyCode]);
+  });
+
+  socket.on("submitMessage", (message, lobbyCode) => {
+    if (!lobbyContent[lobbyCode]) return;
+
+    const game = lobbyContent[lobbyCode].game;
+
+    if (message != null && message != "") {
+      game.responses[socket.id] = message;
+    } else {
+      game.responses[socket.id] = "no response.";
+    }
+    io.to(lobbyCode).emit("onLobbyUpdated", lobbyCode, lobbyContent[lobbyCode]);
+    console.log(`Updated responses: ${JSON.stringify(game.responses)}`);
   });
 
   socket.on("disconnect", () => {

@@ -21,9 +21,11 @@
   </div>
   <div class="right">
     <div class="chat_container">
-      <div class="chat" *ngFor="let player of players">
+      <div class="chat" *ngFor="let player of playersData">
         <strong>{{ player.name }}</strong>
-        <br />Heres my message
+        <br />{{
+          currentResponses[player.socketId] || "Waiting for response..."
+        }}
       </div>
     </div>
     <div class="chat_input_container">
@@ -33,7 +35,7 @@
         placeholder="Type your message here..."
         (keydown.enter)="sendMessage()"
         [(ngModel)]="message"
-        disabled
+        [disabled]="!allPrepDone"
       />
       <button class="send_button" (click)="sendMessage()">Send</button>
       <button class="depends_button">{{ actionButton }}</button>
