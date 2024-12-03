@@ -128,10 +128,11 @@ let lobbyContent = {
       guesses: 0,
       maxGuesses: 3,
       votesUsed: 0,
-      maxVotes: 3,
+      maxVotes: 1,
       voteData: {},
       responses: {},
       canSendMessages: false,
+      gameOver: false,
       dev: "",
     },
   },
@@ -169,13 +170,13 @@ io.on("connection", (socket) => {
   }
 
   async function gameLoop(lobbyCode) {
+    let currentGame = 1;
     while (
       lobbyContent[lobbyCode] &&
       lobbyContent[lobbyCode].game.isActive == true
     ) {
       const lobby = lobbyContent[lobbyCode];
       const game = lobby.game;
-      let currentGame = 1;
 
       console.log(`Starting round ${game.currentRound} in lobby ${lobbyCode}`);
 
@@ -190,11 +191,15 @@ io.on("connection", (socket) => {
       game.guesses = 0;
       game.maxGuesses = 3;
       game.votesUsed = 0;
-      game.maxVotes = 3;
+      game.maxVotes = 1;
       game.voteData = {};
       game.responses = {};
       game.canSendMessages = false;
       game.dev = "";
+      game.gameOver = false;
+      game.currentRound = 1;
+
+      io.to(lobbyCode).emit("onLobbyUpdated", lobbyCode, lobby);
 
       // Step 1: Assign Roles
       assignRoles(lobby);
@@ -216,6 +221,8 @@ io.on("connection", (socket) => {
         lobbyContent[lobbyCode] &&
         lobbyContent[lobbyCode].game.isActive == true
       ) {
+        game.responses = {};
+
         game.canSendMessages = true;
 
         io.to(lobbyCode).emit("onLobbyUpdated", lobbyCode, lobby);
@@ -228,7 +235,7 @@ io.on("connection", (socket) => {
             (playerId) => game.responses[playerId]
           );
           return allResponded;
-        }, 60000);
+        }, 30000);
 
         // Fill in "no response." for missing players
         Object.keys(lobby.players).forEach((playerId) => {
@@ -246,6 +253,8 @@ io.on("connection", (socket) => {
         game.currentRound++;
         console.log("next round");
       }
+      currentGame++;
+      io.to(lobbyCode).emit("onLobbyUpdated", lobbyCode, lobby);
     }
   }
 
@@ -303,10 +312,11 @@ io.on("connection", (socket) => {
           guesses: 0,
           maxGuesses: 3,
           votesUsed: 0,
-          maxVotes: 3,
+          maxVotes: 1,
           voteData: {},
           responses: {},
           canSendMessages: false,
+          gameOver: false,
           dev: "",
         },
       };
@@ -433,6 +443,108 @@ io.on("connection", (socket) => {
     }
     io.to(lobbyCode).emit("onLobbyUpdated", lobbyCode, lobbyContent[lobbyCode]);
     console.log(`Updated responses: ${JSON.stringify(game.responses)}`);
+  });
+
+  socket.on("submitGuess", (guess, lobbyCode) => {
+    if (lobbyContent[lobbyCode]) {
+      const lobby = lobbyContent[lobbyCode];
+      if (!lobby || !lobby.game) return;
+
+      const game = lobby.game;
+
+      if (socket.id !== game.imposter) {
+        socket.emit("onSendError", "You are not the imposter.");
+        return;
+      }
+
+      if (!guess || typeof guess !== "string") {
+        socket.emit("onSendError", "Invalid guess.");
+        return;
+      }
+
+      if (!game.isActive) {
+        socket.emit("onSendError", "The game is not active.");
+        return;
+      }
+
+      if (game.guesses >= game.maxGuesses) {
+        io.to(lobbyCode).emit("gameOver", {
+          result: "loss",
+          message: "The imposter has used all their guesses!",
+        });
+        game.gameOver = true;
+        io.to(lobbyCode).emit("onLobbyUpdated", lobbyCode, lobby);
+      }
+
+      game.guesses++;
+
+      if (guess.toLowerCase() === game.category?.toLowerCase()) {
+        io.to(lobbyCode).emit("gameOver", {
+          result: "win",
+          message: "The imposter guessed the category correctly!",
+        });
+        game.gameOver = true;
+        io.to(lobbyCode).emit("onLobbyUpdated", lobbyCode, lobby);
+      } else if (game.guesses >= game.maxGuesses) {
+        io.to(lobbyCode).emit("gameOver", {
+          result: "loss",
+          message: "The imposter failed to guess the category!",
+        });
+        game.gameOver = true;
+        io.to(lobbyCode).emit("onLobbyUpdated", lobbyCode, lobby);
+      } else {
+        io.to(socket.id).emit("guessFeedback", {
+          remainingGuesses: game.maxGuesses - game.guesses,
+        });
+      }
+    } else {
+      socket.emit("onSendError", "Error");
+    }
+  });
+
+  socket.on("submitVote", (votedSocketId, lobbyCode) => {
+    if (lobbyContent[lobbyCode]) {
+      const lobby = lobbyContent[lobbyCode];
+      const game = lobby.game;
+
+      if (!lobby || !game) return;
+      if (votedSocketId === game.imposter) {
+        io.to(lobbyCode).emit("gameOver", {
+          result: "loss",
+          message: "The players have identified the imposter!",
+        });
+        game.gameOver = true;
+        io.to(lobbyCode).emit("onLobbyUpdated", lobbyCode, lobby);
+      } else {
+        io.to(lobbyCode).emit("gameOver", {
+          result: "win",
+          message: "The imposter wins! A wrong vote was made.",
+        });
+        game.gameOver = true;
+        io.to(lobbyCode).emit("onLobbyUpdated", lobbyCode, lobby);
+      }
+    } else {
+      socket.emit("onSendError", "Error");
+    }
+  });
+
+  socket.on("startNewGame", (lobbyCode) => {
+    const lobby = lobbyContent[lobbyCode];
+
+    if (!lobby) {
+      socket.emit("onSendError", "Lobby not found.");
+      return;
+    }
+
+    if (!lobby.host[socket.id]) {
+      socket.emit("onSendError", "Only the host can start a new game.");
+      return;
+    }
+
+    lobby.game.currentGame++;
+
+    io.to(lobbyCode).emit("onLobbyUpdated", lobbyCode, lobbyContent[lobbyCode]);
+    console.log(`New game started in lobby ${lobbyCode}`);
   });
 
   socket.on("disconnect", () => {

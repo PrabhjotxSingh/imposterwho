@@ -56,6 +56,18 @@ export class SocketService {
     this.socket.emit('submitMessage', message, lobbyCode);
   }
 
+  submitGuess(guess: string, lobbyCode: string) {
+    this.socket.emit('submitGuess', guess, lobbyCode);
+  }
+
+  submitVote(votedPlayerSocketId: string, lobbyCode: string) {
+    this.socket.emit('submitVote', votedPlayerSocketId, lobbyCode);
+  }
+
+  startNewGame(lobbyCode: string): void {
+    this.socket.emit('startNewGame', lobbyCode);
+  }
+
   onLobbyCreated(callback: (lobbyCode: string) => void) {
     this.socket.on('onLobbyCreated', callback);
   }
@@ -74,5 +86,17 @@ export class SocketService {
 
   onPlayerLeft(callback: (data: { lobbyCode: string; players: any }) => void) {
     this.socket.on('onPlayerLeft', callback);
+  }
+
+  onGuessFeedback(callback: (feedback: { remainingGuesses: number }) => void) {
+    this.socket.on('guessFeedback', callback);
+  }
+
+  onGameOver(callback: (data: { result: string; message: string }) => void) {
+    this.socket.on('gameOver', callback);
+  }
+
+  endGame(lobbyCode: string) {
+    this.socket.emit('endGame', lobbyCode);
   }
 }

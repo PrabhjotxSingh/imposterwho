@@ -84,3 +84,18 @@
 .send_button:hover {
   background-color: #007bb5;
 }
+
+.self-message {
+  height: 20%;
+  width: 40%;
+  background-color: #007bb5;
+  padding: 20px;
+  margin: 20px;
+  display: inline-block;
+  color: white;
+  border-radius: 20px;
+}
+
+.timer-container {
+  color: white;
+}

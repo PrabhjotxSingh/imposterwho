@@ -23,14 +23,75 @@ export class PlayComponent implements OnInit, OnDestroy {
   canSendMessages: boolean = false;
   message: string = '';
   currentResponses: any = {};
+  timer: number = 30;
+  private timerInterval: any;
 
   constructor(
-    private socketService: SocketService,
+    public socketService: SocketService,
     private router: Router,
     private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
+    this.socketService.onGuessFeedback(
+      (feedback: { remainingGuesses: number }) => {
+        Swal.fire({
+          title: 'Guess Incorrect',
+          text: `You have ${feedback.remainingGuesses} guesses left.`,
+          icon: 'warning',
+          confirmButtonColor: '#fea42f',
+          confirmButtonText: 'OK',
+        });
+      }
+    );
+
+    this.socketService.onGameOver(
+      (data: { result: string; message: string }) => {
+        Swal.fire({
+          title: 'Game Over',
+          text: data.message,
+          confirmButtonColor: '#fea42f',
+          confirmButtonText: 'OK',
+          allowOutsideClick: false,
+          allowEscapeKey: false,
+        }).then(() => {
+          const isHost =
+            this.lobbyContent.host[this.socketService.socketId] !== undefined;
+
+          if (isHost) {
+            Swal.fire({
+              title: 'Start New Game',
+              text: 'Would you like to start a new game?',
+              icon: 'question',
+              showCancelButton: true,
+              confirmButtonColor: '#fea42f',
+              cancelButtonColor: '#d33',
+              confirmButtonText: 'Yes, Start New Game',
+              cancelButtonText: 'No',
+              allowOutsideClick: false,
+              allowEscapeKey: false,
+            }).then((result) => {
+              if (result.isConfirmed) {
+                this.startNewGame();
+              } else {
+                this.router.navigate(['']).then(() => {
+                  window.location.reload();
+                });
+              }
+            });
+          } else {
+            Swal.fire({
+              title: 'Awaiting Host',
+              text: 'Please wait while host decides to start a new game.',
+              showConfirmButton: false,
+              allowOutsideClick: false,
+              allowEscapeKey: false,
+            });
+          }
+        });
+      }
+    );
+
     this.socketService.checkPlayerStatus();
 
     this.socketService.onLobbyClosed((error: string) => {
@@ -190,6 +251,9 @@ export class PlayComponent implements OnInit, OnDestroy {
               } else {
                 this.currentCategory = this.lobbyContent.game.category;
               }
+              if (this.lobbyContent.game.isActive && !this.timerInterval) {
+                this.startTimer(30);
+              }
             }
           }
         }
@@ -199,6 +263,10 @@ export class PlayComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.lobbySubscription.unsubscribe();
+
+    if (this.timerInterval) {
+      clearInterval(this.timerInterval);
+    }
   }
 
   showErrorAlert(title: string, message: string) {
@@ -246,5 +314,101 @@ export class PlayComponent implements OnInit, OnDestroy {
 
   submitCategory(value: string | null) {
     this.socketService.submitCategory(value, this.lobbyCode);
+  }
+
+  startTimer(duration: number) {
+    if (this.timerInterval) {
+      clearInterval(this.timerInterval);
+    }
+
+    this.timer = duration;
+    this.timerInterval = setInterval(() => {
+      if (this.timer > 0) {
+        this.timer--;
+      } else {
+        clearInterval(this.timerInterval);
+        this.timerInterval = null;
+      }
+    }, 1000);
+  }
+
+  actionButtonClick() {
+    if (this.lobbyContent.game.imposter === this.socketService.socketId) {
+      if (this.allPrepDone && this.lobbyContent.game.isActive) {
+        Swal.fire({
+          title: 'Guess the Category',
+          input: 'text',
+          inputPlaceholder: 'Enter your guess...',
+          showCancelButton: false,
+          confirmButtonText: 'Submit Guess',
+          confirmButtonColor: '#fea42f',
+          allowOutsideClick: false,
+          allowEscapeKey: false,
+          timerProgressBar: true,
+          inputValidator: (value) => {
+            if (!value || value.trim() === '') {
+              return 'You need to write something!';
+            }
+            return null;
+          },
+        }).then((result) => {
+          if (result.isConfirmed) {
+            this.socketService.submitGuess(result.value, this.lobbyCode);
+          }
+        });
+      }
+    } else {
+      if (this.allPrepDone && this.lobbyContent.game.isActive) {
+        const playerNames = this.players
+          .filter((player) => player.socketId !== this.socketService.socketId)
+          .map((player) => player.name);
+
+        Swal.fire({
+          title: 'Vote for the Imposter',
+          input: 'select',
+          inputOptions: playerNames.reduce((options, name, index) => {
+            options[index] = name;
+            return options;
+          }, {}),
+          inputPlaceholder: 'Select a player',
+          confirmButtonText: 'Submit Vote',
+          confirmButtonColor: '#fea42f',
+          allowOutsideClick: false,
+          allowEscapeKey: false,
+          showCancelButton: false,
+          inputValidator: (value) => {
+            if (value === null || value === undefined || value.trim() === '') {
+              return 'You need to select someone!';
+            }
+            return null;
+          },
+        }).then((result) => {
+          if (result.isConfirmed) {
+            const votedPlayerIndex = parseInt(result.value, 10);
+            const votedPlayerSocketId = this.players[votedPlayerIndex].socketId;
+            this.socketService.submitVote(votedPlayerSocketId, this.lobbyCode);
+            Swal.fire({
+              title: 'Vote Submitted',
+              text: `You voted for ${this.players[votedPlayerIndex].name}.`,
+              icon: 'info',
+              confirmButtonColor: '#fea42f',
+              confirmButtonText: 'OK',
+            });
+          }
+        });
+      } else {
+        Swal.fire({
+          title: 'Not Ready to Vote',
+          text: 'You can only vote after the preparation is done and the round is active.',
+          icon: 'warning',
+          confirmButtonColor: '#fea42f',
+          confirmButtonText: 'OK',
+        });
+      }
+    }
+  }
+
+  startNewGame(): void {
+    this.socketService.startNewGame(this.lobbyCode);
   }
 }

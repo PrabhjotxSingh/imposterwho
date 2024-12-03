@@ -21,7 +21,13 @@
   </div>
   <div class="right">
     <div class="chat_container">
-      <div class="chat" *ngFor="let player of playersData">
+      <div
+        class="chat"
+        *ngFor="let player of playersData"
+        [ngClass]="{
+          'self-message': player.socketId === socketService.socketId
+        }"
+      >
         <strong>{{ player.name }}</strong>
         <br />{{
           currentResponses[player.socketId] || "Waiting for response..."
@@ -29,16 +35,29 @@
       </div>
     </div>
     <div class="chat_input_container">
+      <div class="timer-container" *ngIf="timer > 0">
+        <p>Time left: {{ timer }}</p>
+      </div>
       <input
         type="text"
         class="chat_input"
         placeholder="Type your message here..."
         (keydown.enter)="sendMessage()"
         [(ngModel)]="message"
-        [disabled]="!allPrepDone"
+        [disabled]="!canSendMessages"
       />
       <button class="send_button" (click)="sendMessage()">Send</button>
-      <button class="depends_button">{{ actionButton }}</button>
+      <button
+        class="depends_button"
+        (click)="actionButtonClick()"
+        [disabled]="!canSendMessages"
+        [disabled]="
+          lobbyContent.game.guesses >= lobbyContent.game.maxGuesses ||
+          !allPrepDone
+        "
+      >
+        {{ actionButton }}
+      </button>
     </div>
   </div>
 </div>
